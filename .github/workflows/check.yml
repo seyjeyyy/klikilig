@@ -21,7 +21,7 @@ jobs:
       - run: npm ci
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.2.0
       - run: supabase start > /dev/null
       - name: Configure disposable local stack
         shell: bash
