@@ -1,0 +1,44 @@
+name: Klikilig checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      APP_ORIGIN: http://localhost:3000
+      KLIKILIG_INTEGRATION: "1"
+      KLIKILIG_MEDIA_TEST: "1"
+      KLIKILIG_ADULT_TEST: "1"
+      ADULT_PRIVATE_ENABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase start > /dev/null
+      - name: Configure disposable local stack
+        shell: bash
+        run: |
+          set +x
+          eval "$(supabase status -o env | sed -n '/^API_URL=/p; /^ANON_KEY=/p; /^SERVICE_ROLE_KEY=/p; /^DB_URL=/p')"
+          case "$DB_URL" in *@127.0.0.1:54322/*|*@localhost:54322/*) ;; *) exit 1 ;; esac
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "update booth.config set adult_enabled=true"
+          echo "::add-mask::$ANON_KEY"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          echo "KLIKILIG_TEST_ADMIN_KEY=$SERVICE_ROLE_KEY" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$ANON_KEY" >> "$GITHUB_ENV"
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+
