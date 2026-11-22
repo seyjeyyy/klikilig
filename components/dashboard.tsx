@@ -9,6 +9,7 @@ export default function Dashboard({
   eligible,
   create,
   name,
+  notice,
 }: {
   rooms: {
     id: string;
@@ -20,6 +21,7 @@ export default function Dashboard({
   eligible: boolean;
   create: boolean;
   name: string;
+  notice: React.ReactNode;
 }) {
   const router = useRouter();
   const modal = useRef<HTMLDialogElement>(null),
@@ -41,12 +43,16 @@ export default function Dashboard({
     modal.current?.showModal();
   }
   useEffect(() => {
-    if (create) open();
+    if (create && new URL(location.href).searchParams.get("create") === "1") {
+      history.replaceState(history.state, "", "/dashboard");
+      open();
+    }
   }, [create]);
   return (
     <main className="container">
       <p className="eyebrow">YOUR PHOTO BOOTH</p>
       <h1>Hello, {name}.</h1>
+      {!create && notice}
       <button className="primary" onClick={open}>
         <Camera />
         Create a room
@@ -95,6 +101,7 @@ export default function Dashboard({
       </Link>
       <p role="status">{status}</p>
       <dialog ref={modal}>
+        {create && notice}
         <form
           onSubmit={async (e) => {
             e.preventDefault();

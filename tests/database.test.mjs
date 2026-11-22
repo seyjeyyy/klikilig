@@ -6,7 +6,7 @@ test("migration enforces invitation, member, capture and consent boundaries", as
   const db = new PGlite();
   try {
     await db.exec(
-      `create role anon;create role authenticated;create role service_role;create schema auth;create schema realtime;create table auth.users(id uuid primary key,raw_user_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;create table realtime.messages(extension text);create function realtime.topic() returns text language sql as $$ select ''::text $$;`,
+      `create role anon;create role authenticated;create role service_role;create schema auth;create schema realtime;create table auth.users(id uuid primary key,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}');create function auth.uid() returns uuid language sql as $$select nullif(current_setting('test.uid',true),'')::uuid$$;create table realtime.messages(extension text);create function realtime.topic() returns text language sql as $$ select ''::text $$;`,
     );
     for (const file of (await readdir("supabase/migrations")).sort())
       await db.exec(await readFile("supabase/migrations/" + file, "utf8"));

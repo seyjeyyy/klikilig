@@ -1,4 +1,5 @@
 import { test, expect, Page, BrowserContext } from "@playwright/test";
+import { confirmationEmail } from "./mailbox";
 test("landing postcard and responsive routes without a camera prompt", async ({
   page,
 }) => {
@@ -29,10 +30,20 @@ test("landing postcard and responsive routes without a camera prompt", async ({
 const suffix = () => crypto.randomUUID().slice(0, 12);
 async function signup(page: Page, name: string) {
   await page.getByLabel("Display name").fill(name);
-  await page.getByLabel("Email address").fill(suffix() + "@example.test");
+  const email = suffix() + "@example.test";
+  await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password", { exact: true }).fill("Photo-date-12345!");
   await page.getByLabel("Confirm password").fill("Photo-date-12345!");
   await page.getByRole("button", { name: "Sign up", exact: true }).click();
+  if (process.env.KLIKILIG_EMAIL_TEST === "1") {
+    await expect(
+      page.getByRole("heading", { name: "Check your email" }),
+    ).toBeVisible();
+    await page.goto(await confirmationEmail(email));
+    await expect(
+      page.getByText("Email verified. Welcome to Klikilig!"),
+    ).toBeAttached();
+  }
 }
 async function setup(context: BrowserContext) {
   await context.grantPermissions([

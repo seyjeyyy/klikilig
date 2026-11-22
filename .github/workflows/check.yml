@@ -10,6 +10,7 @@ jobs:
       APP_ORIGIN: http://localhost:3000
       KLIKILIG_INTEGRATION: "1"
       KLIKILIG_MEDIA_TEST: "1"
+      KLIKILIG_EMAIL_TEST: "1"
       KLIKILIG_ADULT_TEST: "1"
       ADULT_PRIVATE_ENABLED: "true"
     steps:
@@ -22,7 +23,11 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 3.2.0
-      - run: supabase start > /dev/null
+      - name: Start disposable stack with email confirmation and local SMTP
+        run: |
+          sed -i 's/enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
+          printf '\n[auth.rate_limit]\nemail_sent = 100\n' >> supabase/config.toml
+          supabase start > /dev/null
       - name: Configure disposable local stack
         shell: bash
         run: |

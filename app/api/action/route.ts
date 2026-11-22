@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
     }
     let result: unknown = {};
     if (["signup", "login", "forgot-password", "resend"].includes(action)) {
-      const next = safeNext(data.next);
+      const next = safeNext(
+        data.next ??
+          (action === "resend" ? jar.get("klikilig-next")?.value : null),
+      );
       jar.set("klikilig-next", next, cookie);
       const email = String(data.email).trim(),
         password = String(data.password || "");
@@ -47,6 +50,8 @@ export async function POST(req: NextRequest) {
             "Check your email and password, and confirm your email before logging in.",
           );
         result = { next };
+        jar.delete("klikilig-next");
+        jar.delete("klikilig-signup-email");
       }
       if (action === "signup") {
         const name = String(data.name || "").trim();
@@ -57,13 +62,27 @@ export async function POST(req: NextRequest) {
         const res = await client.auth.signUp({
           email,
           password,
-          options: { data: { display_name: name }, emailRedirectTo: callback },
+          options: {
+            data: {
+              display_name: name,
+              signup_intent:
+                next === "/invite"
+                  ? "invite"
+                  : next === "/dashboard?create=1"
+                    ? "create"
+                    : "dashboard",
+            },
+            emailRedirectTo: callback,
+          },
         });
         if (res.error)
           throw new Error(
             "Signup could not be completed. Check your details or try logging in.",
           );
         result = { confirm: !res.data.session, next };
+        if (!res.data.session)
+          jar.set("klikilig-signup-email", digest(email.toLowerCase()), cookie);
+        else jar.delete("klikilig-next");
       }
       if (action === "resend") {
         const { error } = await client.auth.resend({

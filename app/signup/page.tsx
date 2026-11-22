@@ -6,7 +6,7 @@ export default async function Page({
 }: {
   searchParams: Promise<{
     next?: string;
-    confirmed?: string;
+
     expired?: string;
   }>;
 }) {
@@ -18,11 +18,7 @@ export default async function Page({
         mode="signup"
         next={safeNext(p.next || null)}
         message={
-          p.confirmed
-            ? "Your account is ready. Reopen your original invitation to join."
-            : p.expired
-              ? "This email link has expired. Request another one."
-              : ""
+          p.expired ? "This email link has expired. Request another one." : ""
         }
       />
     </>

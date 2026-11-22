@@ -38,7 +38,7 @@ Enable email/password under Supabase Authentication → Providers. Enable confir
 
 - Confirmation callback: `<origin>/auth/callback`
 - Recovery callback: `<origin>/auth/callback?flow=recovery`
-- Confirmation email template link: `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=email`
+- Confirmation email template link: `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup`
 - Recovery email template link: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
 
 Use generic email subjects such as “Confirm your Klikilig account” and “Reset your Klikilig password.” The app also accepts PKCE code callbacks in the initiating browser. Token-hash templates support finishing verification in a different browser. Without the original continuation, the confirmation page tells the guest to reopen the original invitation. Redirects accept only the in-app destinations in `safeNext`.

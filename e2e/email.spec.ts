@@ -28,9 +28,7 @@ test("confirmation and recovery links work in fresh browser contexts", async ({
     const first = await confirmed.newPage();
     await first.goto(callback(signup.data.properties!.hashed_token, "email"));
     await expect(
-      first.getByText(
-        "Your account is ready. Reopen your original invitation to join.",
-      ),
+      first.getByText("Email verified. Welcome to Klikilig!"),
     ).toBeVisible();
     await first.goto("/dashboard");
     await expect(

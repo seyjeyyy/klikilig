@@ -21,6 +21,9 @@ enable_signup = true
 [auth.email]
 enable_signup = true
 enable_confirmations = false
+[auth.email.template.confirmation]
+subject = "Confirm your Klikilig account"
+content_path = "./supabase/templates/confirmation.html"
 [realtime]
 enabled = true
 

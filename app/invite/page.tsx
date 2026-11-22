@@ -1,6 +1,7 @@
 import { db } from "@/lib/server";
 import Invite from "@/components/invite";
 import { Header } from "@/components/brand";
+import VerificationNotice from "@/components/verification-notice";
 export const metadata = {
   title: "Private invitation · Klikilig",
   openGraph: {
@@ -11,12 +12,14 @@ export const metadata = {
   robots: { index: false },
 };
 export default async function Page() {
-  const signed = process.env.NEXT_PUBLIC_SUPABASE_URL
-    ? !!(await (await db()).auth.getUser()).data.user
-    : false;
+  const user = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? (await (await db()).auth.getUser()).data.user
+    : null;
+  const signed = !!user;
   return (
     <>
       <Header member={signed} />
+      <VerificationNotice user={user} />
       <Invite signed={signed} />
     </>
   );

@@ -1,29 +1,64 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { createHash } from "node:crypto";
 import { db, origin } from "@/lib/server";
-import { safeNext } from "@/lib/shared";
 export async function GET(req: NextRequest) {
-  const url = req.nextUrl,
-    client = await db(),
+  const base = origin(),
+    p = req.nextUrl.searchParams,
     jar = await cookies(),
-    type = url.searchParams.get("type"),
-    hash = url.searchParams.get("token_hash"),
-    code = url.searchParams.get("code");
-  const response =
-    hash && (type === "email" || type === "recovery" || type === "signup")
+    client = await db();
+  const go = (path: string) =>
+    NextResponse.redirect(base + path, {
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Referrer-Policy": "no-referrer",
+      },
+    });
+  const recovery = p.get("type") === "recovery" || p.get("flow") === "recovery";
+  const failed = () =>
+    go(recovery ? "/forgot-password?expired=1" : "/auth/confirmation");
+  if (p.has("error") || p.has("error_code")) return failed();
+  const hash = p.get("token_hash"),
+    type = p.get("type"),
+    code = p.get("code");
+  const verified =
+    hash && (type === "signup" || type === "email" || type === "recovery")
       ? await client.auth.verifyOtp({ token_hash: hash, type })
       : code
         ? await client.auth.exchangeCodeForSession(code)
         : null;
-  const next =
-    type === "recovery" || url.searchParams.get("flow") === "recovery"
-      ? "/reset-password"
-      : jar.get("klikilig-invite")
-        ? "/invite"
-        : jar.has("klikilig-next")
-          ? safeNext(jar.get("klikilig-next")!.value)
-          : "/login?confirmed=1";
-  return NextResponse.redirect(
-    origin() + (!response || response.error ? "/login?expired=1" : next),
-  );
+  if (!verified || verified.error || !verified.data.user?.email_confirmed_at)
+    return failed();
+  if (recovery) return go("/reset-password");
+  const user = verified.data.user;
+  const sameSignup =
+    !!user.email &&
+    jar.get("klikilig-signup-email")?.value ===
+      createHash("sha256")
+        .update(user.email.trim().toLowerCase())
+        .digest("hex");
+  const requested = sameSignup ? jar.get("klikilig-next")?.value : undefined;
+  const intent = requested
+    ? requested === "/invite"
+      ? "invite"
+      : requested === "/dashboard?create=1"
+        ? "create"
+        : "dashboard"
+    : user.user_metadata.signup_intent;
+  const dest =
+    intent === "invite" || intent === "create" ? intent : "dashboard";
+  const { data: ticket, error } = await client.rpc("issue_email_receipt", {
+    destination: dest,
+  });
+  if (error || !ticket) return failed();
+  jar.delete("klikilig-next");
+  jar.delete("klikilig-signup-email");
+  jar.set("klikilig-welcome", user.id, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: base.startsWith("https:"),
+    path: "/",
+    maxAge: 120,
+  });
+  return go("/auth/confirmation?receipt=" + encodeURIComponent(ticket));
 }
