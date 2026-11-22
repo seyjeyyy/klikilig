@@ -21,7 +21,12 @@ export default async function Page({
         </main>
       ) : (
         <Dashboard
-          notice={<VerificationNotice user={user} reopen={(await searchParams).reopen==="1"}/>}
+          notice={
+            <VerificationNotice
+              user={user}
+              reopen={(await searchParams).reopen === "1"}
+            />
+          }
           rooms={data.rooms}
           create={create}
           name={user.user_metadata.display_name || "there"}

@@ -11,6 +11,7 @@ jobs:
       KLIKILIG_INTEGRATION: "1"
       KLIKILIG_MEDIA_TEST: "1"
       KLIKILIG_EMAIL_TEST: "1"
+      KLIKILIG_TEST_OTP_EXPIRY: "45"
       KLIKILIG_ADULT_TEST: "1"
       ADULT_PRIVATE_ENABLED: "true"
     steps:
@@ -26,6 +27,7 @@ jobs:
       - name: Start disposable stack with email confirmation and local SMTP
         run: |
           sed -i 's/enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
+          sed -i '/^\[auth.email\]$/a otp_expiry = 45' supabase/config.toml
           printf '\n[auth.rate_limit]\nemail_sent = 100\n' >> supabase/config.toml
           supabase start > /dev/null
       - name: Configure disposable local stack

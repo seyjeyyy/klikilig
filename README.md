@@ -41,6 +41,9 @@ Enable email/password under Supabase Authentication → Providers. Enable confir
 - Confirmation email template link: `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&amp;type=signup`
 - Recovery email template link: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
 
+For Klikilig production, set **Site URL** to `https://klikilig.vercel.app` and include `https://klikilig.vercel.app/auth/callback` and `https://klikilig.vercel.app/auth/callback?flow=recovery` in **Redirect URLs**. The **Confirm signup** template body is versioned in `supabase/templates/confirmation.html`. The previous team-alias-only allowlist sent the hosted verification endpoint to the public Site URL.
+
+The callback verifies the emailed token with Supabase and writes the SSR session cookies. A second request consumes a single-use, five-minute database receipt and checks which account the browser actually authenticated. The receipt grants no session or room access. An unavailable session gets a verified-login screen. A valid session resumes the signup intent. The invitation continuation stays in an HTTP-only cookie, and only an explicit Join claims the guest seat.
 Use generic email subjects such as “Confirm your Klikilig account” and “Reset your Klikilig password.” The app also accepts PKCE code callbacks in the initiating browser. Token-hash templates support finishing verification in a different browser. Without the original continuation, the confirmation page tells the guest to reopen the original invitation. Redirects accept only the in-app destinations in `safeNext`.
 
 ## Rooms and media

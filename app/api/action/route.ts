@@ -80,9 +80,13 @@ export async function POST(req: NextRequest) {
             "Signup could not be completed. Check your details or try logging in.",
           );
         result = { confirm: !res.data.session, next };
-        if (!res.data.session)
+        if (!res.data.session) {
           jar.set("klikilig-signup-email", digest(email.toLowerCase()), cookie);
-        else jar.delete("klikilig-next");
+          const handle =
+            next === "/invite" ? jar.get("klikilig-invite")?.value : undefined;
+          if (handle) jar.set("klikilig-signup-invite", handle, cookie);
+          else jar.delete("klikilig-signup-invite");
+        } else jar.delete("klikilig-next");
       }
       if (action === "resend") {
         const { error } = await client.auth.resend({

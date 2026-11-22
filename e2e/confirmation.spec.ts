@@ -1,8 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { confirmationEmail } from "./mailbox";
+import { createClient } from "@supabase/supabase-js";
 for (const scenario of [
   "same browser",
   "fresh browser",
+  "fresh invite browser",
   "cookies lost",
 ] as const) {
   test("signup email in " + scenario, async ({ browser, baseURL }) => {
@@ -17,7 +19,7 @@ for (const scenario of [
       const next =
         scenario === "same browser"
           ? "/dashboard?create=1"
-          : scenario === "cookies lost"
+          : scenario === "cookies lost" || scenario === "fresh invite browser"
             ? "/invite"
             : "/dashboard";
       const email = crypto.randomUUID() + "@example.test";
@@ -66,7 +68,13 @@ for (const scenario of [
         await expect(
           reader.getByText("Email verified. Welcome to Klikilig!"),
         ).toBeAttached();
-        await expect(reader).toHaveURL(/\/dashboard$/);
+        await expect(reader).toHaveURL(/\/dashboard(\?reopen=1)?$/);
+        if (scenario === "fresh invite browser")
+          await expect(
+            reader.getByText(
+              "Reopen your original invitation to join your person.",
+            ),
+          ).toBeVisible();
         if (scenario === "same browser") {
           await expect(reader.getByRole("dialog")).toBeVisible();
           await reader.reload();
@@ -92,3 +100,31 @@ for (const scenario of [
     }
   });
 }
+test("an expired confirmation offers recovery without a success message", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.KLIKILIG_TEST_OTP_EXPIRY !== "45",
+    "Requires the short expiry in the disposable CI project.",
+  );
+  const url = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!);
+  if (!["127.0.0.1", "localhost"].includes(url.hostname))
+    throw Error("Local test project required.");
+  const admin = createClient(url.origin, process.env.KLIKILIG_TEST_ADMIN_KEY!);
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "signup",
+    email: crypto.randomUUID() + "@example.test",
+    password: "Test-confirm-234!",
+  });
+  expect(error).toBeNull();
+  // Let Auth itself expire a real token.
+  await new Promise((resolve) => setTimeout(resolve, 47000));
+  await page.goto(
+    "/auth/callback?type=signup&token_hash=" +
+      encodeURIComponent(data.properties!.hashed_token),
+  );
+  await expect(
+    page.getByRole("button", { name: "Resend confirmation" }),
+  ).toBeVisible();
+  await expect(page.getByText(/Email verified\./)).toHaveCount(0);
+});

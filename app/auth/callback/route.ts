@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createHash } from "node:crypto";
 import { db, origin } from "@/lib/server";
@@ -38,19 +38,34 @@ export async function GET(req: NextRequest) {
         .update(user.email.trim().toLowerCase())
         .digest("hex");
   const requested = sameSignup ? jar.get("klikilig-next")?.value : undefined;
-  const intent = requested
-    ? requested === "/invite"
+  const intent =
+    user.user_metadata.signup_intent ??
+    (requested === "/invite"
       ? "invite"
       : requested === "/dashboard?create=1"
         ? "create"
-        : "dashboard"
-    : user.user_metadata.signup_intent;
+        : "dashboard");
   const dest =
     intent === "invite" || intent === "create" ? intent : "dashboard";
   const { data: ticket, error } = await client.rpc("issue_email_receipt", {
     destination: dest,
   });
   if (error || !ticket) return failed();
+  if (dest === "invite") {
+    const handle = sameSignup
+      ? jar.get("klikilig-signup-invite")?.value
+      : undefined;
+    if (handle)
+      jar.set("klikilig-invite", handle, {
+        path: "/",
+        httpOnly: true,
+        sameSite: "lax",
+        secure: base.startsWith("https:"),
+        maxAge: 3600,
+      });
+    else jar.delete("klikilig-invite");
+  }
+  jar.delete("klikilig-signup-invite");
   jar.delete("klikilig-next");
   jar.delete("klikilig-signup-email");
   jar.set("klikilig-welcome", user.id, {
